@@ -30,13 +30,15 @@ for ir in range(x_train.shape[0])
 
 
     ---------------------------------------------------------------------------------------------
-# one hot encoding으로 변경
-y_train = tf.keras.utils.to_categorical(y_train, num_classes)
+# 모델 입력 데이터 훈련, 테스트용 준비
+y_train = tf.keras.utils.to_categorical(y_train, num_classes) # 벡터>이진 클래스 행렬 변환
 y_test = tf.keras.utils.to_categorical(y_test, num_classes)
-
+#모델 구성 함수
 def build_model(in_shape):
-    input_data = tf.keras.layers.Input(shape = (in_shape[1], in_shape[2], in_shape[3]))
-
+    #입력데이터
+    input_data = tf.keras.layers.Input(shape = (in_shape[1], in_shape[2], in_shape[3])) #n차원 벡터 일관처리, 지정없으면 None 
+    
+    #컨볼루션 레이어 1층
     conv2d_1 = tf.keras.layers.Conv2D(input_shape = (in_shape[1], in_shape[2], in_shape[3]),
                                padding='same', 
                                kernel_initializer='glorot_normal', 
@@ -44,22 +46,27 @@ def build_model(in_shape):
                                filters=32, 
                                kernel_size=(3,3),
                                activation='relu')(input_data)
-    dropout_1 = tf.keras.layers.Dropout(rate=0.4)(conv2d_1)
-    maxpool2d_1 = tf.keras.layers.MaxPool2D(pool_size=(2,2))(dropout_1)
+    #드롭아웃
+    dropout_1 = tf.keras.layers.Dropout(rate=0.4)(conv2d_1) # (드롭단위 비율, 호출인수)
+    maxpool2d_1 = tf.keras.layers.MaxPool2D(pool_size=(2,2))(dropout_1) #dropout_1 size(2, 2)로 축소
 
+    #컨볼루션 레이어 2층
     conv2d_2 = tf.keras.layers.Conv2D(padding='same', 
                                kernel_initializer='glorot_normal', 
                                bias_initializer='zeros', 
                                filters=64, 
                                kernel_size=(3,3),
                                activation='relu')(maxpool2d_1)
-    dropout_2 = tf.keras.layers.Dropout(rate=0.4)(conv2d_2)
-    maxpool2d_2 = tf.keras.layers.MaxPool2D(pool_size=(2,2))(dropout_2)
+    #드롭아웃
+    dropout_2 = tf.keras.layers.Dropout(rate=0.4)(conv2d_2) #(드롭단위 비율, 호출인수)
+    maxpool2d_2 = tf.keras.layers.MaxPool2D(pool_size=(2,2))(dropout_2) #dropout_2 size(2, 2)로 축소
     
     
     
-    flat_1 = tf.keras.layers.Flatten()(maxpool2d_2)
+    flat_1 = tf.keras.layers.Flatten()(maxpool2d_2) #입력 평평하게, 배치크기 동일 (추가예정)
+    #소프트맥스
     softmax = tf.keras.layers.Dense(units=num_classes, kernel_initializer='glorot_normal', activation='softmax')(flat_1)
+    #출력데이터에 소프트맥스 입력
     output_data = softmax
 
     
@@ -67,6 +74,7 @@ def build_model(in_shape):
     model.compile(optimizer=tf.keras.optimizers.Adam(lr=0.001),
                   loss=tf.keras.losses.categorical_crossentropy,
                   metrics=['accuracy'])
+    # 입력, 출력 / adam, 손실함수=categorical_crossentropy, 출력 레이블 = 정확도
     return model
 
 ---------------------------------------------------------------------------------------------
