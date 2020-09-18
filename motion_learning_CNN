@@ -88,20 +88,24 @@ def build_model(in_shape):
 ---------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     model = build_model(x_train.shape)
+    #텐서보드와 연동. 콜백함수 생성 시 ‘log_dir’인자에 경로를 넣어야 하는데, 이 경로에 텐서보드와 정보를 주고받을 수 있는 파일이 생성됨
 
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir='logs')
+    #모델 학습, 훈련 4가시 속성 존재(acc, loss, val_acc, val_loss
     model.fit(x=x_train, y=y_train, epochs=epochs, validation_data=(x_test, y_test), callbacks=[tensorboard_callback]) 
 
+    #모델 평가. 준비된 시험셋으로 학습된 모델을 평가
     train_loss, train_accuracy = model.evaluate(x=x_train, y=y_train)
-    print('train data loss:{:2.4f}'.format(train_loss))
+    print('train data loss:{:2.4f}'.format(train_loss))   #학습 과정 시각화(아마도)
     print('train accuracy:{:2.4f}'.format(train_accuracy))
 
     test_loss, test_accuracy = model.evaluate(x=x_test, y=y_test)
     print('test data loss:{:2.4f}'.format(test_loss))
     print('test accuracy:{:2.4f}'.format(test_accuracy))
     
+    #모델의 대략적인 구조 파악 가능하도록 만드는 함수
     model.summary()
-    with open('model_report.txt','w') as fh:
+    with open('model_report.txt','w') as fh:    :#파일 생성하기 위해 사용. W: 쓰기보드. 파일 내용 작성할때 사용
         model.summary(print_fn=lambda x: fh.write(x + '\n'))
 
-    model.save('model.h5')
+    model.save('model.h5')#모델 저장. 모델 아키텍처와 모델 가중치를 h5형식으로 저장
