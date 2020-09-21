@@ -1,130 +1,16 @@
-"""
 #텐서플로 워크프레임 적용
 #배열 사용을 위한 넘파이 적용
 import tensorflow as tf
 import numpy as np
 
 #CNN 학습을 위한 batch의 크기와 연산 반복횟수(epochs), 최종 결과 가짓수(num_classes)설정
-batch_size = 128
-epochs = 8
-num_classes = 4
-
-#학습용 데이터와 검사를 위한 데이터를 저장할 변수와 배열 설정
-#data module을 위한 tf.data.Dataset API 사용 데이터를 배열로 가져옴
-# 변수 값이 0~255 이므로 255.0으로 나눠서 0~1.0으로 변수를 재설정해줌, 근데 왜 y_데이터는 없냐
-(x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()  
-x_train = x_train / 255.0 
-x_test = x_test / 255.0 
-
-#이미지 크기를 우리가 계획한 CNN 구조에 맞게 재설정함. 아 어쩌면 우린 일일히 사이즈를 안맞췄어도..됐을지도..물론 지금 자료가 더 정확하겠지만
-#배열초기화
-# x_train 배열에 데이터 값 넣기 
-    #그림 사이즈
-new_x_train=[] 
-for ir in range(x_train.shape[0]) :
-    new_x_train.append(tf.image.resize(x_train, [84,84],  
-                    #method = ResizeMethod.BILINEAR, 
-                    method = 'bilinear', 
-                    preserve_aspect_ratio = False,
-                    antialias = False, 
-                    name = None))
-#5000,84,84,3
-#마찬가지임.
-new_y_train=[] 
-for ir in range(x_train.shape[0]) :
-    new_y_train.append(tf.image.resize(y_train, 
-                    [84,84], 
-                    method=ResizeMethod.BILINEAR, 
-                    preserve_aspect_ratio=False,
-                    antialias=False, 
-                    name=None))
-
-
-# 모델 입력 데이터 훈련, 테스트용 준비
-y_train = tf.keras.utils.to_categorical(y_train, num_classes) # 벡터>이진 클래스 행렬 변환
-y_test = tf.keras.utils.to_categorical(y_test, num_classes)
-#모델 구성 함수
-def build_model(in_shape):
-    #입력데이터
-    input_data = tf.keras.layers.Input(shape = (in_shape[1], in_shape[2], in_shape[3])) #n차원 벡터 일관처리, 지정없으면 None 
-    
-    #컨볼루션 레이어 1층
-    conv2d_1 = tf.keras.layers.Conv2D(input_shape = (in_shape[1], in_shape[2], in_shape[3]),
-                               padding='same', 
-                               kernel_initializer='glorot_normal', 
-                               bias_initializer='zeros', 
-                               filters=32, 
-                               kernel_size=(3,3),
-                               activation='relu')(input_data)
-    #드롭아웃
-    dropout_1 = tf.keras.layers.Dropout(rate=0.4)(conv2d_1) # (드롭단위 비율, 호출인수)
-    maxpool2d_1 = tf.keras.layers.MaxPool2D(pool_size=(2,2))(dropout_1) #dropout_1 size(2, 2)로 축소
-
-    #컨볼루션 레이어 2층
-    conv2d_2 = tf.keras.layers.Conv2D(padding='same', 
-                               kernel_initializer='glorot_normal', 
-                               bias_initializer='zeros', 
-                               filters=64, 
-                               kernel_size=(3,3),
-                               activation='relu')(maxpool2d_1)
-    #드롭아웃
-    dropout_2 = tf.keras.layers.Dropout(rate=0.4)(conv2d_2) #(드롭단위 비율, 호출인수)
-    maxpool2d_2 = tf.keras.layers.MaxPool2D(pool_size=(2,2))(dropout_2) #dropout_2 size(2, 2)로 축소
-    
-    
-    
-    flat_1 = tf.keras.layers.Flatten()(maxpool2d_2) #입력 평평하게, 배치크기 동일 (추가예정)
-    #소프트맥스
-    softmax = tf.keras.layers.Dense(units=num_classes, kernel_initializer='glorot_normal', activation='softmax')(flat_1)
-    #출력데이터에 소프트맥스 입력
-    output_data = softmax
-
-    
-    model = tf.keras.models.Model(inputs=[input_data], outputs=[output_data])
-    model.compile(optimizer=tf.keras.optimizers.Adam(lr=0.001),
-                  loss=tf.keras.losses.categorical_crossentropy,
-                  metrics=['accuracy'])
-    # 입력, 출력 / adam, 손실함수=categorical_crossentropy, 출력 레이블 = 정확도
-    return model
-
-if __name__ == '__main__':
-    model = build_model(x_train.shape)
-    #텐서보드와 연동. 콜백함수 생성 시 ‘log_dir’인자에 경로를 넣어야 하는데, 이 경로에 텐서보드와 정보를 주고받을 수 있는 파일이 생성됨
-
-    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir='logs')
-    #모델 학습, 훈련 4가시 속성 존재(acc, loss, val_acc, val_loss
-    model.fit(x=x_train, y=y_train, epochs=epochs, validation_data=(x_test, y_test), callbacks=[tensorboard_callback]) 
-
-    #모델 평가. 준비된 시험셋으로 학습된 모델을 평가
-    train_loss, train_accuracy = model.evaluate(x=x_train, y=y_train)
-    print('train data loss:{:2.4f}'.format(train_loss))   #학습 과정 시각화(아마도)
-    print('train accuracy:{:2.4f}'.format(train_accuracy))
-
-    test_loss, test_accuracy = model.evaluate(x=x_test, y=y_test)
-    print('test data loss:{:2.4f}'.format(test_loss))
-    print('test accuracy:{:2.4f}'.format(test_accuracy))
-    
-    #모델의 대략적인 구조 파악 가능하도록 만드는 함수
-    model.summary()
-    with open('model_report.txt','w') as fh:    #파일 생성하기 위해 사용. W: 쓰기보드. 파일 내용 작성할때 사용
-        model.summary(print_fn=lambda x: fh.write(x + '\n'))
-
-    model.save('model.h5')#모델 저장. 모델 아키텍처와 모델 가중치를 h5형식으로 저장
-"""
-
-#텐서플로 워크프레임 적용
-#배열 사용을 위한 넘파이 적용
-import tensorflow as tf
-import numpy as np
-
-#CNN 학습을 위한 batch의 크기와 연산 반복횟수(epochs), 최종 결과 가짓수(num_classes)설정
-batch_size = 128
+batch_size = 128 
 epochs = 8
 num_classes = 10 #4
 
 #학습용 데이터와 검사를 위한 데이터를 저장할 변수와 배열 설정
 #data module을 위한 tf.data.Dataset API 사용 데이터를 배열로 가져옴
-# 변수 값이 0~255 이므로 255.0으로 나눠서 0~1.0으로 변수를 재설정해줌, 근데 왜 y_데이터는 없냐
+# 변수 값이 0~255 이므로 255.0으로 나눠서 0~1.0으로 변수를 재설정해줌, y는 라벨링
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()  
 x_train = x_train / 255.0 
 x_test = x_test / 255.0 
@@ -144,30 +30,14 @@ x_test = x_test / 255.0
 
 
 # x_train: train image, y_train: train label, x_test: test images, y_test: test label
-
+# 132-143 주석 아래랑 동일한 코드
 new_x_train = tf.keras.backend.eval(tf.image.resize(x_train, [84, 84], method='bilinear'))
 new_x_test  = tf.keras.backend.eval(tf.image.resize(x_test, [84, 84], method='bilinear'))
 
 
-#5000,84,84,3
-#마찬가지임.
-#new_y_train=[] 
-#for ir in range(x_train.shape[0]) :
-#    new_y_train.append(tf.image.resize(y_train, 
-#                    [84,84], 
-#                    method=ResizeMethod.BILINEAR, 
-#                    preserve_aspect_ratio=False,
-#                    antialias=False, 
-#                    name=None))
-
-
-#new_y_train = tf.keras.backend.eval(tf.image.resize(y_train, [84, 84], method='bilinear'))
-
-
-
 # 모델 입력 데이터 훈련, 테스트용 준비
 y_train = tf.keras.utils.to_categorical(y_train, num_classes) # 벡터>이진 클래스 행렬 변환
-y_test = tf.keras.utils.to_categorical(y_test, num_classes)
+y_test = tf.keras.utils.to_categorical(y_test, num_classes) 
 #모델 구성 함수
 def build_model(in_shape):
     #입력데이터
